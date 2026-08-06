@@ -1,0 +1,558 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="theme-color" content="#14181F">
+<meta name="color-scheme" content="light dark">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon-180.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="TurnDealer">
+<title>Turn Dealer</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=Outfit:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    color-scheme: light;
+    --bg: #FAF7F0;
+    --surface: #FFFFFF;
+    --ink: #1B2432;
+    --ink-soft: #5A6475;
+    --line: #E4DFD3;
+    --accent: #D98E1F;
+    --accent-ink: #7A4E0A;
+    --danger: #C24A3A;
+    --shadow: 0 2px 12px rgba(27,36,50,0.08);
+  }
+  [data-theme="dark"] {
+    color-scheme: dark;
+    --bg: #14181F;
+    --surface: #1E242E;
+    --ink: #F2EFE7;
+    --ink-soft: #9AA3B2;
+    --line: #2C3440;
+    --accent: #E8A33D;
+    --accent-ink: #F3C87E;
+    --danger: #E07060;
+    --shadow: 0 2px 16px rgba(0,0,0,0.4);
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { height: 100%; }
+  html { background: var(--bg); }
+  body {
+    font-family: 'Outfit', system-ui, sans-serif;
+    background: var(--bg);
+    color: var(--ink);
+    transition: background 0.35s ease, color 0.35s ease;
+    overflow: hidden;
+    -webkit-user-select: none;
+    user-select: none;
+  }
+  .screen {
+    position: absolute;
+    inset: 0;
+    background: var(--bg);
+    transition: background 0.35s ease;
+    display: flex;
+    flex-direction: column;
+    padding: max(20px, env(safe-area-inset-top)) 20px max(20px, env(safe-area-inset-bottom));
+    max-width: 480px;
+    margin: 0 auto;
+  }
+  .hidden { display: none !important; }
+
+  /* ---------- Top bar ---------- */
+  .topbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    min-height: 44px;
+  }
+  .brand {
+    font-family: 'Bricolage Grotesque', sans-serif;
+    font-weight: 800;
+    font-size: 1.15rem;
+    letter-spacing: -0.01em;
+  }
+  .brand span { color: var(--accent); }
+  .iconbtn {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    color: var(--ink);
+    border-radius: 12px;
+    width: 42px; height: 42px;
+    font-size: 1.15rem;
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer;
+    box-shadow: var(--shadow);
+    transition: transform 0.1s ease;
+  }
+  .iconbtn:active { transform: scale(0.93); }
+
+  /* ---------- Setup screen ---------- */
+  .setup-body { flex: 1; overflow-y: auto; padding-top: 22px; }
+  .setup-title {
+    font-family: 'Bricolage Grotesque', sans-serif;
+    font-weight: 700;
+    font-size: 1.7rem;
+    line-height: 1.15;
+    margin-bottom: 6px;
+  }
+  .setup-sub {
+    color: var(--ink-soft);
+    font-size: 0.95rem;
+    margin-bottom: 22px;
+  }
+  .player-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 10px;
+  }
+  .player-row input {
+    flex: 1;
+    font-family: 'Outfit', sans-serif;
+    font-size: 1.05rem;
+    font-weight: 500;
+    padding: 13px 16px;
+    border-radius: 14px;
+    border: 1px solid var(--line);
+    background: var(--surface);
+    color: var(--ink);
+    outline: none;
+    min-width: 0;
+    -webkit-user-select: text;
+    user-select: text;
+  }
+  .player-row input:focus { border-color: var(--accent); }
+  .removebtn {
+    background: none;
+    border: none;
+    color: var(--ink-soft);
+    font-size: 1.3rem;
+    width: 40px; height: 40px;
+    border-radius: 10px;
+    cursor: pointer;
+    flex-shrink: 0;
+  }
+  .removebtn:active { color: var(--danger); }
+  .removebtn[disabled] { opacity: 0.25; pointer-events: none; }
+  .addbtn {
+    width: 100%;
+    padding: 13px;
+    margin-top: 4px;
+    border-radius: 14px;
+    border: 1.5px dashed var(--line);
+    background: none;
+    color: var(--ink-soft);
+    font-family: 'Outfit', sans-serif;
+    font-size: 1rem;
+    font-weight: 500;
+    cursor: pointer;
+  }
+  .addbtn:active { border-color: var(--accent); color: var(--accent); }
+  .setup-note {
+    margin-top: 16px;
+    font-size: 0.85rem;
+    color: var(--ink-soft);
+    line-height: 1.5;
+  }
+  .primarybtn {
+    width: 100%;
+    padding: 17px;
+    border-radius: 16px;
+    border: none;
+    background: var(--accent);
+    color: #FFF;
+    font-family: 'Bricolage Grotesque', sans-serif;
+    font-weight: 700;
+    font-size: 1.15rem;
+    cursor: pointer;
+    box-shadow: var(--shadow);
+    transition: transform 0.1s ease, opacity 0.2s ease;
+    margin-top: 18px;
+  }
+  [data-theme="dark"] .primarybtn { color: #14181F; }
+  .primarybtn:active { transform: scale(0.97); }
+  .primarybtn[disabled] { opacity: 0.4; pointer-events: none; }
+
+  /* ---------- Play screen ---------- */
+  #playScreen { cursor: pointer; }
+  .play-status {
+    text-align: center;
+    padding-top: 14px;
+  }
+  .round-label {
+    font-size: 0.8rem;
+    font-weight: 600;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--ink-soft);
+  }
+  .round-dots {
+    display: flex;
+    justify-content: center;
+    gap: 8px;
+    margin-top: 10px;
+  }
+  .dot {
+    width: 9px; height: 9px;
+    border-radius: 50%;
+    background: var(--line);
+    transition: background 0.25s ease, transform 0.25s ease;
+  }
+  .dot.done { background: var(--accent); }
+  .dot.now { background: var(--accent); transform: scale(1.45); }
+
+  .stage {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    overflow: hidden;
+  }
+  .up-next {
+    font-size: 0.85rem;
+    font-weight: 600;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--accent);
+  }
+  .big-name {
+    font-family: 'Bricolage Grotesque', sans-serif;
+    font-weight: 800;
+    font-size: clamp(2.6rem, 15vw, 4.6rem);
+    line-height: 1.05;
+    text-align: center;
+    letter-spacing: -0.02em;
+    max-width: 100%;
+    overflow-wrap: break-word;
+    padding: 0 8px;
+  }
+  .deal-in { animation: dealIn 0.42s cubic-bezier(0.2, 0.9, 0.3, 1.05); }
+  @keyframes dealIn {
+    0%   { opacity: 0; transform: translateY(46px) rotate(-3deg) scale(0.92); }
+    100% { opacity: 1; transform: translateY(0) rotate(0) scale(1); }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .deal-in { animation: none; }
+  }
+  .tap-hint {
+    text-align: center;
+    color: var(--ink-soft);
+    font-size: 0.9rem;
+    padding-bottom: 8px;
+  }
+  .play-footer {
+    display: flex;
+    gap: 10px;
+  }
+  .footbtn {
+    flex: 1;
+    padding: 13px;
+    border-radius: 14px;
+    border: 1px solid var(--line);
+    background: var(--surface);
+    color: var(--ink-soft);
+    font-family: 'Outfit', sans-serif;
+    font-size: 0.95rem;
+    font-weight: 500;
+    cursor: pointer;
+    box-shadow: var(--shadow);
+  }
+  .footbtn:active { transform: scale(0.97); }
+  /* ---------- Update banner (opt-in) ---------- */
+  .update-note {
+    position: fixed;
+    left: 50%;
+    bottom: max(18px, env(safe-area-inset-bottom));
+    transform: translateX(-50%) translateY(120%);
+    background: var(--surface);
+    color: var(--ink);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    box-shadow: var(--shadow);
+    padding: 10px 12px 10px 16px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-size: 0.9rem;
+    z-index: 50;
+    transition: transform 0.35s cubic-bezier(0.2, 0.9, 0.3, 1);
+    max-width: calc(100vw - 32px);
+  }
+  .update-note.show { transform: translateX(-50%) translateY(0); }
+  .update-note button {
+    font-family: 'Outfit', sans-serif;
+    font-weight: 600;
+    font-size: 0.9rem;
+    border: none;
+    border-radius: 10px;
+    padding: 8px 14px;
+    cursor: pointer;
+  }
+  .update-note .u-yes { background: var(--accent); color: #FFF; }
+  [data-theme="dark"] .update-note .u-yes { color: #14181F; }
+  .update-note .u-no { background: none; color: var(--ink-soft); padding: 8px 6px; }
+</style>
+</head>
+<body>
+<div id="backdrop" style="position:fixed; inset:0; z-index:-1; background:var(--bg); transition:background 0.35s ease;"></div>
+
+<!-- ============ SETUP ============ -->
+<div class="screen" id="setupScreen">
+  <div class="topbar">
+    <div class="brand">Turn<span>Dealer</span></div>
+    <button class="iconbtn" id="themeBtn1" aria-label="Toggle light or dark mode">◐</button>
+  </div>
+  <div class="setup-body">
+    <div class="setup-title">Who's playing?</div>
+    <div class="setup-sub">At least 3 players. Tap a name to edit it.</div>
+    <div id="playerList"></div>
+    <button class="addbtn" id="addPlayerBtn">+ Add player</button>
+    <div class="setup-note">
+      Each round, everyone goes exactly once in a fresh random order — and whoever went last never goes first in the next round, so no one is ever more than one turn ahead.
+    </div>
+  </div>
+  <button class="primarybtn" id="startBtn">Deal first turn</button>
+</div>
+
+<!-- ============ PLAY ============ -->
+<div class="screen hidden" id="playScreen">
+  <div class="topbar">
+    <div class="brand">Turn<span>Dealer</span></div>
+    <button class="iconbtn" id="themeBtn2" aria-label="Toggle light or dark mode">◐</button>
+  </div>
+  <div class="play-status">
+    <div class="round-label" id="roundLabel">Round 1</div>
+    <div class="round-dots" id="roundDots"></div>
+  </div>
+  <div class="stage">
+    <div class="up-next">Up next</div>
+    <div class="big-name" id="bigName"></div>
+  </div>
+  <div class="tap-hint">Tap anywhere for the next turn</div>
+  <div class="play-footer">
+    <button class="footbtn" id="editBtn">Edit players</button>
+    <button class="footbtn" id="restartBtn">Restart</button>
+  </div>
+</div>
+
+<script>
+(function () {
+  // ---------- State ----------
+  var players = ['Sara', 'Hudson', 'Brian', 'Alyssa', 'Buff'];
+  var perm = [];        // current hidden permutation
+  var idx = -1;         // index of last revealed name in perm
+  var round = 0;
+  var excluded = null;  // name excluded from the current permutation
+
+  // ---------- Theme ----------
+  function toggleTheme() {
+    var b = document.documentElement;
+    b.dataset.theme = b.dataset.theme === 'light' ? 'dark' : 'light';
+    var meta = document.querySelector('meta[name="theme-color"]');
+    meta.setAttribute('content', b.dataset.theme === 'dark' ? '#14181F' : '#FAF7F0');
+  }
+  document.getElementById('themeBtn1').addEventListener('click', function (e) { e.stopPropagation(); toggleTheme(); });
+  document.getElementById('themeBtn2').addEventListener('click', function (e) { e.stopPropagation(); toggleTheme(); });
+
+  // Follow system preference on load
+  if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+    document.documentElement.dataset.theme = 'dark';
+    document.querySelector('meta[name="theme-color"]').setAttribute('content', '#14181F');
+  }
+
+  // ---------- Setup screen ----------
+  var playerList = document.getElementById('playerList');
+  var startBtn = document.getElementById('startBtn');
+
+  function renderPlayers() {
+    playerList.innerHTML = '';
+    players.forEach(function (name, i) {
+      var row = document.createElement('div');
+      row.className = 'player-row';
+
+      var input = document.createElement('input');
+      input.type = 'text';
+      input.value = name;
+      input.placeholder = 'Player ' + (i + 1);
+      input.maxLength = 24;
+      input.addEventListener('input', function () {
+        players[i] = input.value;
+        validate();
+      });
+
+      var rm = document.createElement('button');
+      rm.className = 'removebtn';
+      rm.textContent = '✕';
+      rm.setAttribute('aria-label', 'Remove player');
+      if (players.length <= 3) rm.disabled = true;
+      rm.addEventListener('click', function () {
+        players.splice(i, 1);
+        renderPlayers();
+      });
+
+      row.appendChild(input);
+      row.appendChild(rm);
+      playerList.appendChild(row);
+    });
+    validate();
+  }
+
+  function cleanNames() {
+    return players.map(function (n) { return n.trim(); }).filter(function (n) { return n.length > 0; });
+  }
+
+  function validate() {
+    var names = cleanNames();
+    var unique = new Set(names.map(function (n) { return n.toLowerCase(); }));
+    startBtn.disabled = !(names.length >= 3 && unique.size === names.length);
+  }
+
+  document.getElementById('addPlayerBtn').addEventListener('click', function () {
+    players.push('');
+    renderPlayers();
+    var inputs = playerList.querySelectorAll('input');
+    inputs[inputs.length - 1].focus();
+  });
+
+  // ---------- Core logic ----------
+  function shuffle(arr) {
+    var a = arr.slice();
+    for (var i = a.length - 1; i > 0; i--) {
+      var j = Math.floor(Math.random() * (i + 1));
+      var t = a[i]; a[i] = a[j]; a[j] = t;
+    }
+    return a;
+  }
+
+  function newPermutation() {
+    var pool = players.filter(function (n) { return n !== excluded; });
+    perm = shuffle(pool);
+    idx = -1;
+    round++;
+  }
+
+  function nextName() {
+    idx++;
+    if (idx >= perm.length) {
+      excluded = perm[perm.length - 1]; // last name shown sits out the next shuffle
+      newPermutation();
+      idx = 0;
+    }
+    return perm[idx];
+  }
+
+  // ---------- Play screen ----------
+  var bigName = document.getElementById('bigName');
+  var roundLabel = document.getElementById('roundLabel');
+  var roundDots = document.getElementById('roundDots');
+
+  function renderStatus() {
+    roundLabel.textContent = 'Round ' + round;
+    roundDots.innerHTML = '';
+    for (var i = 0; i < perm.length; i++) {
+      var d = document.createElement('div');
+      d.className = 'dot' + (i < idx ? ' done' : i === idx ? ' now' : '');
+      roundDots.appendChild(d);
+    }
+  }
+
+  function deal() {
+    var name = nextName();
+    bigName.classList.remove('deal-in');
+    void bigName.offsetWidth; // restart animation
+    bigName.textContent = name;
+    bigName.classList.add('deal-in');
+    renderStatus();
+  }
+
+  startBtn.addEventListener('click', function () {
+    players = cleanNames();
+    excluded = null;   // round 1: everyone is in the shuffle
+    round = 0;
+    newPermutation();
+    document.getElementById('setupScreen').classList.add('hidden');
+    document.getElementById('playScreen').classList.remove('hidden');
+    deal();
+  });
+
+  var playScreen = document.getElementById('playScreen');
+  playScreen.addEventListener('click', function (e) {
+    if (e.target.closest('button')) return; // buttons handle themselves
+    deal();
+  });
+
+  document.getElementById('editBtn').addEventListener('click', function (e) {
+    e.stopPropagation();
+    document.getElementById('playScreen').classList.add('hidden');
+    document.getElementById('setupScreen').classList.remove('hidden');
+    renderPlayers();
+  });
+
+  document.getElementById('restartBtn').addEventListener('click', function (e) {
+    e.stopPropagation();
+    excluded = null;
+    round = 0;
+    newPermutation();
+    deal();
+  });
+
+  renderPlayers();
+})();
+</script>
+
+<div class="update-note" id="updateNote" role="status">
+  <span>A newer version is available.</span>
+  <button class="u-yes" id="updateYes">Update</button>
+  <button class="u-no" id="updateNo">Later</button>
+</div>
+
+<script>
+(function () {
+  if (!('serviceWorker' in navigator)) return;
+
+  navigator.serviceWorker.register('sw.js').then(function (reg) {
+    // A waiting worker means a new version is downloaded and parked.
+    function offerUpdate(worker) {
+      var note = document.getElementById('updateNote');
+      note.classList.add('show');
+      document.getElementById('updateYes').onclick = function () {
+        note.classList.remove('show');
+        worker.postMessage('SKIP_WAITING');
+      };
+      document.getElementById('updateNo').onclick = function () {
+        note.classList.remove('show'); // current version keeps running
+      };
+    }
+
+    if (reg.waiting) offerUpdate(reg.waiting);
+
+    reg.addEventListener('updatefound', function () {
+      var nw = reg.installing;
+      if (!nw) return;
+      nw.addEventListener('statechange', function () {
+        if (nw.state === 'installed' && navigator.serviceWorker.controller) {
+          offerUpdate(nw);
+        }
+      });
+    });
+  }).catch(function () { /* offline first load or unsupported: app still works */ });
+
+  // When the user accepts, the new worker takes over — reload once to run it.
+  var reloaded = false;
+  navigator.serviceWorker.addEventListener('controllerchange', function () {
+    if (reloaded) return;
+    reloaded = true;
+    location.reload();
+  });
+})();
+</script>
+</body>
+</html>
