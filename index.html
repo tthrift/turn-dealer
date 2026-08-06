@@ -242,6 +242,21 @@
   @media (prefers-reduced-motion: reduce) {
     .deal-in { animation: none; }
   }
+  .last-name {
+    font-size: 0.95rem;
+    color: var(--ink-soft);
+    min-height: 1.3em;           /* reserve space so the layout doesn't jump */
+    transition: opacity 0.3s ease;
+  }
+  .last-name strong { color: var(--ink); font-weight: 600; }
+  .version-tag {
+    text-align: center;
+    color: var(--ink-soft);
+    opacity: 0.55;
+    font-size: 0.72rem;
+    letter-spacing: 0.08em;
+    padding-top: 10px;
+  }
   .tap-hint {
     text-align: center;
     color: var(--ink-soft);
@@ -320,6 +335,7 @@
     </div>
   </div>
   <button class="primarybtn" id="startBtn">Deal first turn</button>
+  <div class="version-tag">Turn Dealer v3</div>
 </div>
 
 <!-- ============ PLAY ============ -->
@@ -335,6 +351,7 @@
   <div class="stage">
     <div class="up-next">Up next</div>
     <div class="big-name" id="bigName"></div>
+    <div class="last-name" id="lastName"></div>
   </div>
   <div class="tap-hint">Tap anywhere for the next turn</div>
   <div class="play-footer">
@@ -345,8 +362,25 @@
 
 <script>
 (function () {
+  // ---------- Persistence (survives app updates; stored on the device) ----------
+  var STORE_KEY = 'turnDealer.players';
+  var THEME_KEY = 'turnDealer.theme';
+  function loadPlayers() {
+    try {
+      var raw = localStorage.getItem(STORE_KEY);
+      if (raw) {
+        var arr = JSON.parse(raw);
+        if (Array.isArray(arr) && arr.length >= 3) return arr;
+      }
+    } catch (e) {}
+    return null;
+  }
+  function savePlayers(list) {
+    try { localStorage.setItem(STORE_KEY, JSON.stringify(list)); } catch (e) {}
+  }
+
   // ---------- State ----------
-  var players = ['Sara', 'Hudson', 'Brian', 'Alyssa', 'Buff'];
+  var players = loadPlayers() || ['Sara', 'Hudson', 'Brian', 'Alyssa', 'Buff'];
   var perm = [];        // current hidden permutation
   var idx = -1;         // index of last revealed name in perm
   var round = 0;
@@ -359,11 +393,16 @@
     var meta = document.querySelector('meta[name="theme-color"]');
     meta.setAttribute('content', b.dataset.theme === 'dark' ? '#14181F' : '#FAF7F0');
   }
-  document.getElementById('themeBtn1').addEventListener('click', function (e) { e.stopPropagation(); toggleTheme(); });
-  document.getElementById('themeBtn2').addEventListener('click', function (e) { e.stopPropagation(); toggleTheme(); });
+  document.getElementById('themeBtn1').addEventListener('click', function (e) { e.stopPropagation(); toggleTheme(); try { localStorage.setItem(THEME_KEY, document.documentElement.dataset.theme); } catch (err) {} });
+  document.getElementById('themeBtn2').addEventListener('click', function (e) { e.stopPropagation(); toggleTheme(); try { localStorage.setItem(THEME_KEY, document.documentElement.dataset.theme); } catch (err) {} });
 
-  // Follow system preference on load
-  if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+  // Saved theme choice wins; otherwise follow the system preference
+  var savedTheme = null;
+  try { savedTheme = localStorage.getItem(THEME_KEY); } catch (e) {}
+  if (savedTheme === 'dark' || savedTheme === 'light') {
+    document.documentElement.dataset.theme = savedTheme;
+    document.querySelector('meta[name="theme-color"]').setAttribute('content', savedTheme === 'dark' ? '#14181F' : '#FAF7F0');
+  } else if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
     document.documentElement.dataset.theme = 'dark';
     document.querySelector('meta[name="theme-color"]').setAttribute('content', '#14181F');
   }
@@ -464,8 +503,13 @@
     }
   }
 
+  var lastNameEl = document.getElementById('lastName');
+
   function deal() {
+    var prev = bigName.textContent;
     var name = nextName();
+    lastNameEl.innerHTML = prev ? 'Last turn: <strong></strong>' : '';
+    if (prev) lastNameEl.querySelector('strong').textContent = prev;
     bigName.classList.remove('deal-in');
     void bigName.offsetWidth; // restart animation
     bigName.textContent = name;
@@ -475,6 +519,8 @@
 
   startBtn.addEventListener('click', function () {
     players = cleanNames();
+    savePlayers(players);
+    bigName.textContent = '';   // fresh game: no previous player to show
     excluded = null;   // round 1: everyone is in the shuffle
     round = 0;
     newPermutation();
@@ -501,6 +547,7 @@
     excluded = null;
     round = 0;
     newPermutation();
+    bigName.textContent = '';   // fresh game: no previous player to show
     deal();
   });
 
