@@ -160,6 +160,13 @@
     color: var(--ink-soft);
     line-height: 1.5;
   }
+  .start-hint {
+    text-align: center;
+    color: var(--danger);
+    font-size: 0.85rem;
+    min-height: 1.2em;
+    padding-top: 12px;
+  }
   .primarybtn {
     width: 100%;
     padding: 17px;
@@ -281,6 +288,7 @@
     box-shadow: var(--shadow);
   }
   .footbtn:active { transform: scale(0.97); }
+  .footbtn[disabled] { opacity: 0.35; pointer-events: none; }
 </style>
 </head>
 <body>
@@ -301,8 +309,9 @@
       Each round deals everyone exactly once in a fresh random order, and whoever went last never goes first in the next round — so nobody is dealt twice in a row, and nobody is ever more than one turn ahead.
     </div>
   </div>
+  <div class="start-hint" id="startHint"></div>
   <button class="primarybtn" id="startBtn">Deal first turn</button>
-  <div class="version-tag">Turn Dealer v1</div>
+  <div class="version-tag">Turn Dealer v3</div>
 </div>
 
 <!-- ============ PLAY ============ -->
@@ -322,6 +331,7 @@
   </div>
   <div class="tap-hint">Tap anywhere for the next turn</div>
   <div class="play-footer">
+    <button class="footbtn" id="undoBtn">&#8617; Undo</button>
     <button class="footbtn" id="editBtn">Edit players</button>
     <button class="footbtn" id="restartBtn">Restart</button>
   </div>
@@ -352,6 +362,30 @@
   var idx = -1;         // index of last revealed name in perm
   var round = 0;
   var prevLast = null;  // last player of the previous round
+  var history = [];     // snapshots for Undo (one per deal)
+  var GAME_KEY = 'turnDealer.game';
+
+  function saveGame() {
+    try {
+      localStorage.setItem(GAME_KEY, JSON.stringify({
+        players: players, perm: perm, idx: idx, round: round, prevLast: prevLast,
+        big: document.getElementById('bigName').textContent,
+        last: document.getElementById('lastName').innerHTML,
+        history: history
+      }));
+    } catch (e) {}
+  }
+  function loadGame() {
+    try {
+      var raw = localStorage.getItem(GAME_KEY);
+      if (!raw) return null;
+      var g = JSON.parse(raw);
+      if (g && Array.isArray(g.players) && g.players.length >= 3 &&
+          Array.isArray(g.perm) && typeof g.idx === 'number' &&
+          typeof g.round === 'number' && g.perm[g.idx] != null) return g;
+    } catch (e) {}
+    return null;
+  }
 
   // ---------- Theme ----------
   function toggleTheme() {
@@ -420,7 +454,11 @@
   function validate() {
     var names = cleanNames();
     var unique = new Set(names.map(function (n) { return n.toLowerCase(); }));
-    startBtn.disabled = !(names.length >= 3 && unique.size === names.length);
+    var hint = '';
+    if (names.length < 3) hint = 'Need at least 3 named players.';
+    else if (unique.size !== names.length) hint = 'Player names must be unique.';
+    document.getElementById('startHint').textContent = hint;
+    startBtn.disabled = hint !== '';
   }
 
   document.getElementById('addPlayerBtn').addEventListener('click', function () {
@@ -476,8 +514,18 @@
   }
 
   var lastNameEl = document.getElementById('lastName');
+  var undoBtn = document.getElementById('undoBtn');
+
+  function refreshUndo() {
+    // Undo is available only when there's a previously shown name to return to.
+    var h = history[history.length - 1];
+    undoBtn.disabled = !(h && h.big);
+  }
 
   function deal() {
+    history.push({ perm: perm.slice(), idx: idx, round: round, prevLast: prevLast,
+                   big: bigName.textContent, last: lastNameEl.innerHTML });
+    if (history.length > 300) history.shift();
     var prev = bigName.textContent;
     var name = nextName();
     lastNameEl.innerHTML = prev ? 'Last turn: <strong></strong>' : '';
@@ -487,14 +535,30 @@
     bigName.textContent = name;
     bigName.classList.add('deal-in');
     renderStatus();
+    refreshUndo();
+    saveGame();
+  }
+
+  function undo() {
+    var h = history.pop();
+    if (!h || !h.big) { if (h) history.push(h); return; }
+    perm = h.perm; idx = h.idx; round = h.round; prevLast = h.prevLast;
+    bigName.classList.remove('deal-in');
+    bigName.textContent = h.big;
+    lastNameEl.innerHTML = h.last;
+    renderStatus();
+    refreshUndo();
+    saveGame();
   }
 
   startBtn.addEventListener('click', function () {
     players = cleanNames();
     savePlayers(players);
     bigName.textContent = '';   // fresh game: no previous player to show
+    lastNameEl.innerHTML = '';
     prevLast = null;   // round 1: any player may go first
     round = 0;
+    history = [];
     newPermutation();
     document.getElementById('setupScreen').classList.add('hidden');
     document.getElementById('playScreen').classList.remove('hidden');
@@ -502,9 +566,18 @@
   });
 
   var playScreen = document.getElementById('playScreen');
+  var lastTap = 0;
   playScreen.addEventListener('click', function (e) {
     if (e.target.closest('button')) return; // buttons handle themselves
+    var now = Date.now();
+    if (now - lastTap < 350) return; // ignore accidental double-taps
+    lastTap = now;
     deal();
+  });
+
+  undoBtn.addEventListener('click', function (e) {
+    e.stopPropagation();
+    undo();
   });
 
   document.getElementById('editBtn').addEventListener('click', function (e) {
@@ -516,14 +589,31 @@
 
   document.getElementById('restartBtn').addEventListener('click', function (e) {
     e.stopPropagation();
+    if (!confirm('Start a fresh game with the same players?')) return;
     prevLast = null;
     round = 0;
-    newPermutation();
+    history = [];
     bigName.textContent = '';   // fresh game: no previous player to show
+    lastNameEl.innerHTML = '';
+    newPermutation();
     deal();
   });
 
   renderPlayers();
+
+  // Resume an in-progress game if one was saved (survives app close/sleep).
+  var saved = loadGame();
+  if (saved) {
+    players = saved.players;
+    perm = saved.perm; idx = saved.idx; round = saved.round; prevLast = saved.prevLast;
+    history = Array.isArray(saved.history) ? saved.history : [];
+    bigName.textContent = saved.big || '';
+    lastNameEl.innerHTML = saved.last || '';
+    document.getElementById('setupScreen').classList.add('hidden');
+    document.getElementById('playScreen').classList.remove('hidden');
+    renderStatus();
+    refreshUndo();
+  }
 })();
 </script>
 
