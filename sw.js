@@ -2,7 +2,7 @@
    To ship an update: change VERSION below (and upload the new files).
    Users keep their current version until they tap the update note in the app. */
 
-var VERSION = 'v3';
+var VERSION = 'v4';
 var CORE_CACHE = 'turn-dealer-' + VERSION;
 var FONT_CACHE = 'turn-dealer-fonts';
 
