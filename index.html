@@ -83,8 +83,12 @@
     border: 1px solid var(--line);
     color: var(--ink);
     border-radius: 12px;
-    width: 42px; height: 42px;
-    font-size: 1.15rem;
+    min-width: 42px; height: 42px;
+    padding: 0 12px;
+    gap: 6px;
+    font-family: 'Outfit', sans-serif;
+    font-size: 0.9rem;
+    font-weight: 600;
     display: flex; align-items: center; justify-content: center;
     cursor: pointer;
     box-shadow: var(--shadow);
@@ -311,7 +315,7 @@
   </div>
   <div class="start-hint" id="startHint"></div>
   <button class="primarybtn" id="startBtn">Deal first turn</button>
-  <div class="version-tag">Turn Dealer v3</div>
+  <div class="version-tag">Turn Dealer v1</div>
 </div>
 
 <!-- ============ PLAY ============ -->
@@ -387,26 +391,42 @@
     return null;
   }
 
-  // ---------- Theme ----------
-  function toggleTheme() {
-    var b = document.documentElement;
-    b.dataset.theme = b.dataset.theme === 'light' ? 'dark' : 'light';
-    var meta = document.querySelector('meta[name="theme-color"]');
-    meta.setAttribute('content', b.dataset.theme === 'dark' ? '#14181F' : '#FAF7F0');
-  }
-  document.getElementById('themeBtn1').addEventListener('click', function (e) { e.stopPropagation(); toggleTheme(); try { localStorage.setItem(THEME_KEY, document.documentElement.dataset.theme); } catch (err) {} });
-  document.getElementById('themeBtn2').addEventListener('click', function (e) { e.stopPropagation(); toggleTheme(); try { localStorage.setItem(THEME_KEY, document.documentElement.dataset.theme); } catch (err) {} });
+  // ---------- Theme: Auto -> Light -> Dark ----------
+  // Auto tracks the phone's setting live; Light/Dark are manual overrides.
+  var themeMode = 'auto';
+  try {
+    var tm = localStorage.getItem(THEME_KEY);
+    if (tm === 'light' || tm === 'dark' || tm === 'auto') themeMode = tm;
+  } catch (e) {}
 
-  // Saved theme choice wins; otherwise follow the system preference
-  var savedTheme = null;
-  try { savedTheme = localStorage.getItem(THEME_KEY); } catch (e) {}
-  if (savedTheme === 'dark' || savedTheme === 'light') {
-    document.documentElement.dataset.theme = savedTheme;
-    document.querySelector('meta[name="theme-color"]').setAttribute('content', savedTheme === 'dark' ? '#14181F' : '#FAF7F0');
-  } else if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
-    document.documentElement.dataset.theme = 'dark';
-    document.querySelector('meta[name="theme-color"]').setAttribute('content', '#14181F');
+  var systemDark = window.matchMedia ? window.matchMedia('(prefers-color-scheme: dark)') : null;
+
+  function applyTheme() {
+    var effective = themeMode === 'auto'
+      ? (systemDark && systemDark.matches ? 'dark' : 'light')
+      : themeMode;
+    document.documentElement.dataset.theme = effective;
+    document.querySelector('meta[name="theme-color"]')
+      .setAttribute('content', effective === 'dark' ? '#14181F' : '#FAF7F0');
+    var label = themeMode === 'auto' ? '\u25D0 Auto' : themeMode === 'light' ? '\u2600\uFE0E Light' : '\u263E Dark';
+    document.getElementById('themeBtn1').textContent = label;
+    document.getElementById('themeBtn2').textContent = label;
   }
+
+  function cycleTheme() {
+    themeMode = themeMode === 'auto' ? 'light' : themeMode === 'light' ? 'dark' : 'auto';
+    try { localStorage.setItem(THEME_KEY, themeMode); } catch (e) {}
+    applyTheme();
+  }
+
+  document.getElementById('themeBtn1').addEventListener('click', function (e) { e.stopPropagation(); cycleTheme(); });
+  document.getElementById('themeBtn2').addEventListener('click', function (e) { e.stopPropagation(); cycleTheme(); });
+
+  // In Auto, follow the phone if it switches (e.g., dark at sunset) while open
+  if (systemDark && systemDark.addEventListener) {
+    systemDark.addEventListener('change', function () { if (themeMode === 'auto') applyTheme(); });
+  }
+  applyTheme();
 
   // ---------- Setup screen ----------
   var playerList = document.getElementById('playerList');

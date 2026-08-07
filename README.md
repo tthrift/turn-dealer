@@ -16,7 +16,7 @@ Live at: `https://tthrift.github.io/turn-dealer/`
 - **Updates are automatic, one launch behind.** When the app is opened while online, any newer published version downloads silently in the background. The session in progress is never interrupted; the new version takes effect the next time the app is launched. There is no update prompt.
 - **Player names persist.** The roster is saved on the device on every edit — each keystroke, add, and delete — and restored on the next launch, including unfinished drafts. Saved names survive app updates; they are only lost if the device's website data for this site is cleared.
 - **Three players minimum, unique names.** The *Deal first turn* button stays disabled until there are at least three non-blank, unique names, and a hint line explains which requirement is unmet.
-- **Light and dark mode.** The app follows the device's system theme by default. The ◐ button overrides it, and a deliberate choice is remembered thereafter.
+- **Light and dark mode.** The theme button cycles **Auto → Light → Dark** and shows the current mode. Auto (the default) follows the phone's system theme live — including mid-session switches such as dark mode at sunset. Light and Dark are manual overrides. The chosen mode is remembered across launches.
 - **Version check.** The running version is shown in small text at the bottom of the setup screen (*Edit players*).
 
 ## Design choices
