@@ -1,8 +1,8 @@
-/* Turn Dealer service worker — offline-first, opt-in updates.
+/* Turn Dealer service worker — offline-first, automatic updates.
    To ship an update: change VERSION below (and upload the new files).
-   Users keep their current version until they tap the update note in the app. */
+   New versions install in the background and are used from the next launch. */
 
-var VERSION = 'v4';
+var VERSION = 'v1';
 var CORE_CACHE = 'turn-dealer-' + VERSION;
 var FONT_CACHE = 'turn-dealer-fonts';
 
@@ -18,8 +18,7 @@ var CORE_ASSETS = [
 self.addEventListener('install', function (e) {
   e.waitUntil(
     caches.open(CORE_CACHE).then(function (c) { return c.addAll(CORE_ASSETS); })
-    // NOTE: no skipWaiting() here — a new version waits politely
-    // until the user opts in from the page.
+      .then(function () { return self.skipWaiting(); }) // auto-update: no waiting
   );
 });
 
@@ -34,10 +33,6 @@ self.addEventListener('activate', function (e) {
   );
 });
 
-// The page sends this only when the user taps "Update".
-self.addEventListener('message', function (e) {
-  if (e.data === 'SKIP_WAITING') self.skipWaiting();
-});
 
 // Fetch: cache-first for everything.
 // Fonts (Google Fonts) are cached the first time they load, then served offline.

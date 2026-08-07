@@ -281,39 +281,6 @@
     box-shadow: var(--shadow);
   }
   .footbtn:active { transform: scale(0.97); }
-  /* ---------- Update banner (opt-in) ---------- */
-  .update-note {
-    position: fixed;
-    left: 50%;
-    bottom: max(18px, env(safe-area-inset-bottom));
-    transform: translateX(-50%) translateY(120%);
-    background: var(--surface);
-    color: var(--ink);
-    border: 1px solid var(--line);
-    border-radius: 14px;
-    box-shadow: var(--shadow);
-    padding: 10px 12px 10px 16px;
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    font-size: 0.9rem;
-    z-index: 50;
-    transition: transform 0.35s cubic-bezier(0.2, 0.9, 0.3, 1);
-    max-width: calc(100vw - 32px);
-  }
-  .update-note.show { transform: translateX(-50%) translateY(0); }
-  .update-note button {
-    font-family: 'Outfit', sans-serif;
-    font-weight: 600;
-    font-size: 0.9rem;
-    border: none;
-    border-radius: 10px;
-    padding: 8px 14px;
-    cursor: pointer;
-  }
-  .update-note .u-yes { background: var(--accent); color: #FFF; }
-  [data-theme="dark"] .update-note .u-yes { color: #14181F; }
-  .update-note .u-no { background: none; color: var(--ink-soft); padding: 8px 6px; }
 </style>
 </head>
 <body>
@@ -331,11 +298,11 @@
     <div id="playerList"></div>
     <button class="addbtn" id="addPlayerBtn">+ Add player</button>
     <div class="setup-note">
-      Each round, everyone goes exactly once in a fresh random order — and whoever went last never goes first in the next round, so no one is ever more than one turn ahead.
+      Each round deals everyone exactly once in a fresh random order, and whoever went last never goes first in the next round — so nobody is dealt twice in a row, and nobody is ever more than one turn ahead.
     </div>
   </div>
   <button class="primarybtn" id="startBtn">Deal first turn</button>
-  <div class="version-tag">Turn Dealer v4</div>
+  <div class="version-tag">Turn Dealer v1</div>
 </div>
 
 <!-- ============ PLAY ============ -->
@@ -370,7 +337,7 @@
       var raw = localStorage.getItem(STORE_KEY);
       if (raw) {
         var arr = JSON.parse(raw);
-        if (Array.isArray(arr) && arr.length >= 3) return arr;
+        if (Array.isArray(arr) && arr.length >= 1 && arr.every(function (x) { return typeof x === 'string'; })) return arr;
       }
     } catch (e) {}
     return null;
@@ -380,11 +347,11 @@
   }
 
   // ---------- State ----------
-  var players = loadPlayers() || ['Sara', 'Hudson','Buff'];
-  var perm = [];        // current hidden permutation
+  var players = loadPlayers() || ['Hudson', 'Sara', 'Buff'];
+  var perm = [];        // current hidden permutation (all players)
   var idx = -1;         // index of last revealed name in perm
   var round = 0;
-  var excluded = null;  // name excluded from the current permutation
+  var prevLast = null;  // last player of the previous round
 
   // ---------- Theme ----------
   function toggleTheme() {
@@ -424,6 +391,7 @@
       input.maxLength = 24;
       input.addEventListener('input', function () {
         players[i] = input.value;
+        savePlayers(players);
         validate();
       });
 
@@ -434,6 +402,7 @@
       if (players.length <= 3) rm.disabled = true;
       rm.addEventListener('click', function () {
         players.splice(i, 1);
+        savePlayers(players);
         renderPlayers();
       });
 
@@ -456,6 +425,7 @@
 
   document.getElementById('addPlayerBtn').addEventListener('click', function () {
     players.push('');
+    savePlayers(players);
     renderPlayers();
     var inputs = playerList.querySelectorAll('input');
     inputs[inputs.length - 1].focus();
@@ -472,8 +442,10 @@
   }
 
   function newPermutation() {
-    var pool = players.filter(function (n) { return n !== excluded; });
-    perm = shuffle(pool);
+    // Every player appears exactly once per round. Redraw the shuffle if it
+    // would put the previous round's last player first — this is the only
+    // constraint, and it guarantees no one is dealt twice in a row.
+    do { perm = shuffle(players); } while (perm.length > 1 && perm[0] === prevLast);
     idx = -1;
     round++;
   }
@@ -481,7 +453,7 @@
   function nextName() {
     idx++;
     if (idx >= perm.length) {
-      excluded = perm[perm.length - 1]; // last name shown sits out the next shuffle
+      prevLast = perm[perm.length - 1];
       newPermutation();
       idx = 0;
     }
@@ -521,7 +493,7 @@
     players = cleanNames();
     savePlayers(players);
     bigName.textContent = '';   // fresh game: no previous player to show
-    excluded = null;   // round 1: everyone is in the shuffle
+    prevLast = null;   // round 1: any player may go first
     round = 0;
     newPermutation();
     document.getElementById('setupScreen').classList.add('hidden');
@@ -544,7 +516,7 @@
 
   document.getElementById('restartBtn').addEventListener('click', function (e) {
     e.stopPropagation();
-    excluded = null;
+    prevLast = null;
     round = 0;
     newPermutation();
     bigName.textContent = '';   // fresh game: no previous player to show
@@ -555,50 +527,14 @@
 })();
 </script>
 
-<div class="update-note" id="updateNote" role="status">
-  <span>A newer version is available.</span>
-  <button class="u-yes" id="updateYes">Update</button>
-  <button class="u-no" id="updateNo">Later</button>
-</div>
 
 <script>
 (function () {
   if (!('serviceWorker' in navigator)) return;
-
-  navigator.serviceWorker.register('sw.js').then(function (reg) {
-    // A waiting worker means a new version is downloaded and parked.
-    function offerUpdate(worker) {
-      var note = document.getElementById('updateNote');
-      note.classList.add('show');
-      document.getElementById('updateYes').onclick = function () {
-        note.classList.remove('show');
-        worker.postMessage('SKIP_WAITING');
-      };
-      document.getElementById('updateNo').onclick = function () {
-        note.classList.remove('show'); // current version keeps running
-      };
-    }
-
-    if (reg.waiting) offerUpdate(reg.waiting);
-
-    reg.addEventListener('updatefound', function () {
-      var nw = reg.installing;
-      if (!nw) return;
-      nw.addEventListener('statechange', function () {
-        if (nw.state === 'installed' && navigator.serviceWorker.controller) {
-          offerUpdate(nw);
-        }
-      });
-    });
-  }).catch(function () { /* offline first load or unsupported: app still works */ });
-
-  // When the user accepts, the new worker takes over — reload once to run it.
-  var reloaded = false;
-  navigator.serviceWorker.addEventListener('controllerchange', function () {
-    if (reloaded) return;
-    reloaded = true;
-    location.reload();
-  });
+  // Auto-update: new versions install and activate in the background.
+  // The current session keeps running undisturbed; the new version
+  // is used from the next launch onward.
+  navigator.serviceWorker.register('sw.js').catch(function () {});
 })();
 </script>
 </body>
