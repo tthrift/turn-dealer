@@ -254,10 +254,19 @@
     .deal-in { animation: none; }
   }
   .last-name {
-    font-size: 0.95rem;
+    font-size: 0.82rem;
     color: var(--ink-soft);
-    min-height: 1.3em;           /* reserve space so the layout doesn't jump */
-    transition: opacity 0.3s ease;
+    text-align: center;
+    line-height: 1.6;
+    min-height: 4em;             /* room for 3 lines; layout doesn't jump */
+    max-width: 92%;
+    overflow-wrap: break-word;
+  }
+  .last-name .rl {
+    opacity: 0.55;
+    font-size: 0.68rem;
+    letter-spacing: 0.08em;
+    margin-right: 6px;
   }
   .last-name strong { color: var(--ink); font-weight: 600; }
   .version-tag {
@@ -315,7 +324,7 @@
   </div>
   <div class="start-hint" id="startHint"></div>
   <button class="primarybtn" id="startBtn">Deal first turn</button>
-  <div class="version-tag">Turn Dealer v1</div>
+  <div class="version-tag">Turn Dealer v2</div>
 </div>
 
 <!-- ============ PLAY ============ -->
@@ -367,6 +376,7 @@
   var round = 0;
   var prevLast = null;  // last player of the previous round
   var history = [];     // snapshots for Undo (one per deal)
+  var dealtLog = [];    // recent dealt names, kept for the last 3 rounds
   var GAME_KEY = 'turnDealer.game';
 
   function saveGame() {
@@ -374,7 +384,7 @@
       localStorage.setItem(GAME_KEY, JSON.stringify({
         players: players, perm: perm, idx: idx, round: round, prevLast: prevLast,
         big: document.getElementById('bigName').textContent,
-        last: document.getElementById('lastName').innerHTML,
+        log: dealtLog,
         history: history
       }));
     } catch (e) {}
@@ -386,6 +396,7 @@
       var g = JSON.parse(raw);
       if (g && Array.isArray(g.players) && g.players.length >= 3 &&
           Array.isArray(g.perm) && typeof g.idx === 'number' &&
+          Array.isArray(g.log) &&
           typeof g.round === 'number' && g.perm[g.idx] != null) return g;
     } catch (e) {}
     return null;
@@ -542,14 +553,38 @@
     undoBtn.disabled = !(h && h.big);
   }
 
+  function renderHistory() {
+    // Last 3 rounds (incl. the current one), oldest line first. The most
+    // recent entry is the name currently on screen, shown emphasized.
+    lastNameEl.innerHTML = '';
+    var rounds = {};
+    dealtLog.forEach(function (e) { (rounds[e.r] = rounds[e.r] || []).push(e.n); });
+    var keys = Object.keys(rounds).map(Number).sort(function (a, b) { return a - b; });
+    keys.forEach(function (r, ki) {
+      var line = document.createElement('div');
+      var tag = document.createElement('span');
+      tag.className = 'rl';
+      tag.textContent = 'R' + r;
+      line.appendChild(tag);
+      rounds[r].forEach(function (n, i) {
+        if (i > 0) line.appendChild(document.createTextNode(' \u00B7 '));
+        var isCurrent = (ki === keys.length - 1) && (i === rounds[r].length - 1);
+        var el = document.createElement(isCurrent ? 'strong' : 'span');
+        el.textContent = n;
+        line.appendChild(el);
+      });
+      lastNameEl.appendChild(line);
+    });
+  }
+
   function deal() {
     history.push({ perm: perm.slice(), idx: idx, round: round, prevLast: prevLast,
-                   big: bigName.textContent, last: lastNameEl.innerHTML });
+                   big: bigName.textContent, log: dealtLog.slice() });
     if (history.length > 300) history.shift();
-    var prev = bigName.textContent;
     var name = nextName();
-    lastNameEl.innerHTML = prev ? 'Last turn: <strong></strong>' : '';
-    if (prev) lastNameEl.querySelector('strong').textContent = prev;
+    dealtLog.push({ n: name, r: round });
+    dealtLog = dealtLog.filter(function (e) { return e.r >= round - 2; });
+    renderHistory();
     bigName.classList.remove('deal-in');
     void bigName.offsetWidth; // restart animation
     bigName.textContent = name;
@@ -563,9 +598,10 @@
     var h = history.pop();
     if (!h || !h.big) { if (h) history.push(h); return; }
     perm = h.perm; idx = h.idx; round = h.round; prevLast = h.prevLast;
+    dealtLog = h.log || [];
     bigName.classList.remove('deal-in');
     bigName.textContent = h.big;
-    lastNameEl.innerHTML = h.last;
+    renderHistory();
     renderStatus();
     refreshUndo();
     saveGame();
@@ -576,6 +612,7 @@
     savePlayers(players);
     bigName.textContent = '';   // fresh game: no previous player to show
     lastNameEl.innerHTML = '';
+    dealtLog = [];
     prevLast = null;   // round 1: any player may go first
     round = 0;
     history = [];
@@ -590,7 +627,7 @@
   playScreen.addEventListener('click', function (e) {
     if (e.target.closest('button')) return; // buttons handle themselves
     var now = Date.now();
-    if (now - lastTap < 350) return; // ignore accidental double-taps
+    if (now - lastTap < 600) return; // ignore accidental double-taps (covers the deal animation too)
     lastTap = now;
     deal();
   });
@@ -613,6 +650,7 @@
     prevLast = null;
     round = 0;
     history = [];
+    dealtLog = [];
     bigName.textContent = '';   // fresh game: no previous player to show
     lastNameEl.innerHTML = '';
     newPermutation();
@@ -627,8 +665,9 @@
     players = saved.players;
     perm = saved.perm; idx = saved.idx; round = saved.round; prevLast = saved.prevLast;
     history = Array.isArray(saved.history) ? saved.history : [];
+    dealtLog = saved.log;
     bigName.textContent = saved.big || '';
-    lastNameEl.innerHTML = saved.last || '';
+    renderHistory();
     document.getElementById('setupScreen').classList.add('hidden');
     document.getElementById('playScreen').classList.remove('hidden');
     renderStatus();
