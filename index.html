@@ -258,7 +258,7 @@
     color: var(--ink-soft);
     text-align: center;
     line-height: 1.6;
-    min-height: 4em;             /* room for 3 lines; layout doesn't jump */
+    min-height: 6.6em;           /* room for 5 lines; layout doesn't jump */
     max-width: 92%;
     overflow-wrap: break-word;
   }
@@ -324,7 +324,7 @@
   </div>
   <div class="start-hint" id="startHint"></div>
   <button class="primarybtn" id="startBtn">Deal first turn</button>
-  <div class="version-tag">Turn Dealer v2</div>
+  <div class="version-tag">Turn Dealer v3</div>
 </div>
 
 <!-- ============ PLAY ============ -->
@@ -376,7 +376,7 @@
   var round = 0;
   var prevLast = null;  // last player of the previous round
   var history = [];     // snapshots for Undo (one per deal)
-  var dealtLog = [];    // recent dealt names, kept for the last 3 rounds
+  var dealtLog = [];    // recent dealt names, kept for the last 5 rounds
   var GAME_KEY = 'turnDealer.game';
 
   function saveGame() {
@@ -554,7 +554,7 @@
   }
 
   function renderHistory() {
-    // Last 3 rounds (incl. the current one), oldest line first. The most
+    // Last 5 rounds (incl. the current one), oldest line first. The most
     // recent entry is the name currently on screen, shown emphasized.
     lastNameEl.innerHTML = '';
     var rounds = {};
@@ -583,7 +583,7 @@
     if (history.length > 300) history.shift();
     var name = nextName();
     dealtLog.push({ n: name, r: round });
-    dealtLog = dealtLog.filter(function (e) { return e.r >= round - 2; });
+    dealtLog = dealtLog.filter(function (e) { return e.r >= round - 4; });
     renderHistory();
     bigName.classList.remove('deal-in');
     void bigName.offsetWidth; // restart animation

@@ -6,7 +6,7 @@ Live at: `https://tthrift.github.io/turn-dealer/`
 
 ## Usage behaviors
 
-- **One tap, one turn.** The play screen shows the current player's name. Tapping anywhere (except the buttons) reveals the next player. Below the name, a small muted history shows every name dealt in the last three rounds (grouped by round, current name emphasized) — so a skipped or disputed turn is immediately visible at the table. Dots at the top show progress through the current round.
+- **One tap, one turn.** The play screen shows the current player's name. Tapping anywhere (except the buttons) reveals the next player. Below the name, a small muted history shows every name dealt in the last five rounds (grouped by round, current name emphasized) — so a skipped or disputed turn is immediately visible at the table. Dots at the top show progress through the current round.
 - **Accidental-tap protection.** Taps arriving within 600 ms of the previous tap are ignored (this also spans the deal animation), so a double-tap or nervous re-tap advances only one turn.
 - **Undo.** The ↩ Undo button steps back through dealt turns (the history display rewinds with it), as many as needed, but never past the first deal (it is disabled when there is nothing to undo). Within a round, dealing forward again replays the same order; undoing across a round boundary and dealing forward draws a fresh shuffle for that round — still subject to all fairness constraints.
 - **Confirmed restart.** Restart asks for confirmation before discarding the game in progress.

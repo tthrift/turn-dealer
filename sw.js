@@ -2,7 +2,7 @@
    To ship an update: change VERSION below (and upload the new files).
    New versions install in the background and are used from the next launch. */
 
-var VERSION = 'v2';
+var VERSION = 'v3';
 var CORE_CACHE = 'turn-dealer-' + VERSION;
 var FONT_CACHE = 'turn-dealer-fonts';
 
